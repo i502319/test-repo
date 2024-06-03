@@ -1,0 +1,50 @@
+apiVersion: ai.sap.com/v1alpha1
+kind: ServingTemplate
+metadata:
+  annotations:
+    executables.ai.sap.com/description: serving dummy llm executable 
+    executables.ai.sap.com/name: serving-dummy-llm
+    scenarios.ai.sap.com/description: serving otel test happy scenario
+    scenarios.ai.sap.com/name: erving-dummy-llm-scenario
+  labels:
+    ai.sap.com/version: 0.0.1
+    scenarios.ai.sap.com/id: dddddddd-2222-8888-9999-hhhhhhhhhhh
+    ai.sap.com/resourcePlan: starter
+  name: erving-dummy-llm-executable
+  namespace: mt-b024d016
+spec:
+  inputs:
+    parameters:
+      - name: payloadsize
+        default: "100"
+        type: string
+  imagePullSecrets:
+      - name: sap-docker-registry-secret
+  template:
+    apiVersion: serving.kserve.io/v1beta1
+    metadata:
+      annotations: |
+        autoscaling.knative.dev/metric: concurrency   # condition when to scale
+        autoscaling.knative.dev/target: 5
+        autoscaling.knative.dev/targetBurstCapacity: 0
+      labels: |
+        ai.sap.com/resourcePlan: starter # computing power
+    spec: |
+        default:
+          predictor:
+            minReplicas: 1
+            maxReplicas: 3
+            custom:
+              container:
+                name: kfserving-container
+                image: eu.gcr.io/sap-ml-mlf-dev/com.sap.ai/dummy-llm:latest
+                ports:
+                  - containerPort: 3000
+                    protocol: TCP
+                command: ["/bin/sh", "-c"]
+                args:
+                  - >
+                    set -e && echo "Starting" && node src/index.js
+                env:
+                  - name: PAYLOAD_SIZE
+                    value:  "{{inputs.parameters.payloadsize}}"
